@@ -1,0 +1,1226 @@
+<!doctype html>
+<html lang="de-CH">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Knobeleien – Rätsel-Trainer</title>
+<style>
+:root{
+  /* Farben nach flade.ch: Weiss als Grund, Anthrazit für Text, Limettengrün #aecb35 als Akzent */
+  --bg:#ffffff; --card:#f8faf0; --ink:#231f20; --muted:#5f6657;
+  --line:#d3dbbd; --thick:#231f20; --given:#231f20; --user:#46640f;
+  --sel:#dbe9a0; --peer:#f4f8e2; --same:#e7f0bd;
+  --ok:#15803d; --okbg:#dcfce7; --bad:#b91c1c; --badbg:#fee2e2;
+  --hint:#92400e; --hintbg:#fef3c7;
+  --accent:#aecb35; --accent-bg:#f1f7d9; --accent-dark:#5d7410; --lime:#aecb35;
+  --water:#e6f1f5;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Calibri,"Segoe UI",Arial,sans-serif;}
+.wrap{max-width:980px;margin:0 auto;padding:16px;}
+
+/* Kopf */
+.top{display:flex;align-items:center;gap:16px;margin:2px 0 14px;padding-bottom:12px;border-bottom:3px solid var(--lime)}
+.logo{height:58px;width:auto;display:block;flex:none}
+.titlebox h1{margin:0;font-size:1.7rem;line-height:1.15}
+.sub{color:var(--muted);margin:2px 0 0}
+/* Layout */
+.layout{display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start}
+.left{flex:1 1 420px;min-width:280px}
+.right{flex:0 1 300px;min-width:260px;display:flex;flex-direction:column;gap:12px}
+.card{background:var(--card);border-radius:12px;padding:14px;border:1px solid var(--line);box-shadow:0 1px 3px rgba(35,31,32,.06)}
+.card h2{font-size:1.05rem;margin:0 0 8px}
+label.small{font-size:.9rem;color:var(--muted);display:block;margin-bottom:4px}
+.seg{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.seg button{flex:1 1 auto;border:2px solid var(--line);background:#fff;border-radius:8px;padding:7px 8px;font:inherit;cursor:pointer;color:var(--ink)}
+.seg button.on{border-color:var(--accent);background:var(--accent-bg);font-weight:bold}
+.lvldesc{font-size:.9rem;color:var(--muted);min-height:2.4em;margin:0 0 10px}
+.btn{border:none;border-radius:8px;padding:9px 12px;font:inherit;cursor:pointer;background:#e5e7eb;color:var(--ink)}
+.btn:hover{filter:brightness(.95)}
+.btn.primary{background:var(--accent);color:var(--ink);font-weight:bold}
+.btn.primary:hover{background:#9db92d}
+.btn.on{background:var(--accent-dark);color:#fff}
+.btns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.btns .full{grid-column:1/-1}
+.stats{display:flex;justify-content:space-between;font-size:.95rem;margin-bottom:8px;gap:8px;flex-wrap:wrap}
+.stats b{font-variant-numeric:tabular-nums}
+button:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid #f59e0b;outline-offset:2px}
+
+/* Spielfeld (gemeinsam) */
+.board{
+  width:min(100%,520px); aspect-ratio:1/1; margin:0 auto;
+  display:grid; grid-template-columns:repeat(var(--cols,var(--n)),1fr); grid-template-rows:repeat(var(--cols,var(--n)),1fr);
+  border:3px solid var(--thick); background:#fff; user-select:none; touch-action:manipulation;
+}
+.cell{
+  display:flex;align-items:center;justify-content:center;position:relative;
+  border-right:1px solid var(--line);border-bottom:1px solid var(--line);
+  font-size:calc(min(100vw - 40px,520px) / var(--n) * .55);
+  cursor:pointer;color:var(--user);
+}
+.cell.tr{border-right:3px solid var(--thick)}
+.cell.tb{border-bottom:3px solid var(--thick)}
+.cell.lastc{border-right:none}
+.cell.lastr{border-bottom:none}
+.cell.water{background:var(--water)}
+.cell.peer{background:var(--peer)}
+.cell.same{background:var(--same)}
+.cell.sel{background:var(--sel)}
+.cell.given{color:var(--given);font-weight:bold}
+.cell.hint{color:var(--hint);background:var(--hintbg)}
+.cell.ok{color:var(--ok);background:var(--okbg)}
+.cell.bad{color:var(--bad);background:var(--badbg)}
+.cell.sel.ok,.cell.sel.bad,.cell.sel.hint{outline:3px solid var(--accent);outline-offset:-3px}
+.cell.water.ok,.cell.water.bad,.cell.water.hint{outline:0}
+.notes{position:absolute;inset:2px;display:grid;font-size:calc(min(100vw - 40px,520px) / var(--n) * .22);color:#64748b;line-height:1;font-weight:normal}
+.notes span{display:flex;align-items:center;justify-content:center}
+
+/* Eingabe */
+.pad{display:grid;gap:6px;margin:12px auto 0;width:min(100%,520px)}
+.pad button{font:inherit;font-size:1.4rem;padding:10px 0;border-radius:8px;border:2px solid var(--line);background:#fff;cursor:pointer;color:var(--ink)}
+.pad button.del{font-size:1rem}
+.pad button.done{opacity:.35}
+.padhelp{margin:12px auto 0;width:min(100%,520px);font-size:.95rem;color:var(--muted);text-align:center}
+.msg{margin:12px auto 0;width:min(100%,520px);padding:10px 12px;border-radius:8px;display:none;font-size:1rem}
+.msg.show{display:block}
+.msg.info{background:#e0f2fe;color:#075985}
+.msg.good{background:var(--okbg);color:#14532d}
+.msg.warn{background:var(--badbg);color:#7f1d1d}
+.toggle{display:flex;gap:8px;align-items:center;font-size:.95rem;margin-top:6px;cursor:pointer}
+details summary{cursor:pointer;font-weight:bold}
+details ul{padding-left:18px;margin:8px 0 0}
+details li{margin-bottom:4px}
+.legend{display:flex;flex-wrap:wrap;gap:6px;font-size:.85rem;margin-top:8px}
+.legend span{padding:2px 6px;border-radius:5px}
+.overlay{position:fixed;inset:0;background:rgba(15,23,42,.45);display:none;align-items:center;justify-content:center;padding:16px;z-index:10}
+.overlay.show{display:flex}
+.dialog{background:#fff;border-radius:14px;padding:22px;max-width:380px;width:100%;text-align:center}
+.dialog h3{margin:0 0 8px;font-size:1.5rem}
+.dialog p{margin:6px 0}
+.loading{opacity:.4;pointer-events:none}
+.printhead{display:none}
+
+@media (max-width:520px){
+  .logo{height:46px}
+  .titlebox h1{font-size:1.4rem}
+}
+@media print{
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  body{background:#fff}
+  .right,.pad,.padhelp,.msg,.sub,.titlebox,.stats,.overlay{display:none!important}
+  .top{margin:0 0 8px}
+  .logo{height:1.3cm}
+  .printhead{display:block;margin-bottom:12px;font-size:1.2rem}
+  .board{width:16cm}
+  .cell{font-size:calc(16cm / var(--n) * .55)}
+  .cell.peer,.cell.same,.cell.sel{background:#fff}
+}
+
+/* Eingebettet in die Plattform: Kopf wird von der Plattform gezeigt */
+body.embed .top{display:none}
+body.embed .wrap{padding-top:0}
+@media print{body.embed .top{display:flex}}
+
+/* Kennzeichnung «Lösung angezeigt» */
+#stStatus.bad{color:var(--bad)}
+#stStatus.good{color:var(--ok)}
+.solbanner{display:none;background:#b91c1c;color:#fff;font-weight:bold;text-align:center;padding:8px 10px;border-radius:8px;margin-bottom:8px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+#stage{position:relative}
+#stage.sol{outline:4px solid #b91c1c;outline-offset:2px}
+#stage.sol::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:5;background:url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='260' height='170'><text x='130' y='90' text-anchor='middle' font-family='Arial' font-size='22' font-weight='bold' fill='%23b91c1c' fill-opacity='.38' transform='rotate(-25 130 85)'>LÖSUNG ANGEZEIGT</text></svg>") repeat;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+
+/* Knobeleien */
+.kn-wrap{width:min(100%,520px);margin:0 auto}
+.kn-info{font-size:.95rem;margin:0 0 6px;color:var(--muted)}
+.kn-info b{color:var(--ink);font-variant-numeric:tabular-nums}
+.kn-svg{display:block;width:100%;height:auto;background:#fff;border:3px solid var(--thick);border-radius:6px;user-select:none;touch-action:manipulation}
+.kn-sx .kn-svg,.kn-hr .kn-svg{border-color:var(--line)}
+.kn-svg g[data-i]{cursor:pointer}
+.kn-svg g.can rect{stroke:var(--accent);stroke-width:2.5}
+.kn-svg g.em{cursor:default}
+.kn-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:12px auto 0;width:min(100%,360px)}
+.kn-pad button{font:inherit;font-size:1.2rem;padding:10px 0;border-radius:8px;border:2px solid var(--line);background:#fff;cursor:pointer;color:var(--ink)}
+.kn-pad button:active{background:var(--accent-bg)}
+.kn-pad .padhelp{margin:4px 0 0;width:auto;font-size:.9rem}
+.kn-pad1{grid-template-columns:1fr;width:min(100%,520px)}
+.kn-pad1 .go{background:var(--accent);color:var(--ink);border-color:var(--accent);font-weight:bold}
+/* Fluss */
+.rv{display:grid;grid-template-columns:1fr 112px 1fr;gap:0;border:3px solid var(--thick);border-radius:8px;overflow:hidden;background:#fff;min-height:250px}
+.rv .bank{background:#e3f1dc;padding:8px 6px}
+.rv .bank h4{margin:0 0 6px;font-size:.9rem;color:var(--muted);text-align:center}
+.rv .water{background:#cfe6f5;display:flex;align-items:center;padding:6px}
+.rv .raft{width:92px;min-height:110px;background:#c8a46b;border:3px solid #8b6a34;border-radius:8px;padding:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;transition:margin .4s;position:relative}
+.rv .raft span{font-size:.75rem;color:#5c4520}
+.rv .raft.atL{margin-right:auto}
+.rv .raft.atR{margin-left:auto}
+.rv .ppl{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+.rv .raft .ppl{flex-direction:column;flex-wrap:nowrap}
+.chip{display:flex;flex-direction:column;align-items:center;gap:0;font:inherit;border:2px solid var(--line);background:#fff;border-radius:10px;padding:3px 6px;min-width:62px;cursor:pointer;color:var(--ink)}
+.chip .em{font-size:1.6rem;line-height:1.15}
+.chip .nm{font-size:.72rem}
+.chip:hover{border-color:var(--accent)}
+@media (max-width:420px){.rv{grid-template-columns:1fr 84px 1fr}.rv .water{padding:4px}.rv .raft{width:68px}.rv .bank{padding:6px 4px}.rv .ppl{gap:4px}.chip{min-width:48px;padding:3px 2px}.chip .nm{font-size:.62rem}}
+@media print{
+  .kn-wrap{width:16cm}
+  .kn-pad,.kn-info{display:none}
+}
+
+
+.setup-ph{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;min-height:260px;padding:28px 18px;text-align:center;border:2px dashed var(--line,#cbd5e1);border-radius:16px;background:#f8fafc;color:#334155}
+.setup-ph .big{font-size:40px;line-height:1}
+.setup-ph h3{margin:0;font-size:1.15rem}
+.setup-ph p{margin:0;max-width:34ch;font-size:.95rem}
+.setup-ph .chosen{font-weight:700;color:#0f172a}
+.setup-ph .btn{margin-top:6px;min-width:220px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <img class="logo" src="data:image/png;base64,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" alt="Logo">
+    <div class="titlebox">
+      <h1 id="gameTitle">Rätsel-Trainer</h1>
+      <p class="sub" id="sub"></p>
+    </div>
+  </header>
+
+    <div class="layout">
+    <div class="left">
+      <div class="printhead"><span id="phTitle"></span> &nbsp;&nbsp; Name: ______________________</div>
+      <div class="stats">
+        <span>Niveau: <b id="stLevel">–</b></span>
+        <span>Zeit: <b id="stTime">00:00</b></span>
+        <span>Tipps: <b id="stTips">0</b></span>
+        <span>Prüfungen: <b id="stChecks">0</b></span>
+        <span>Status: <b id="stStatus">in Arbeit</b></span>
+      </div>
+      <div id="solBanner" class="solbanner" role="alert">⚠ LÖSUNG ANGEZEIGT – dieses Rätsel zählt nicht als selbst gelöst</div>
+      <div id="stage"></div>
+      <div id="pad"></div>
+      <div class="msg" id="msg" role="status" aria-live="polite"></div>
+    </div>
+
+    <div class="right">
+      <div class="card">
+        <h2 id="newTitle">Neues Rätsel</h2>
+        <label class="small" id="sizeLbl">Grösse</label>
+        <div class="seg" id="sizeSeg"></div>
+        <label class="small">Niveau</label>
+        <div class="seg" id="lvlSeg"></div>
+        <p class="lvldesc" id="lvlDesc"></p>
+        <button class="btn primary" style="width:100%" id="btnNew">Neues Rätsel erstellen</button>
+      </div>
+
+      <div class="card">
+        <h2>Werkzeuge</h2>
+        <div class="btns">
+          <button class="btn primary full" id="btnCheck">✔ Überprüfen</button>
+          <button class="btn" id="btnNotes">✎ Notizen: aus</button>
+          <button class="btn" id="btnHint">💡 Tipp</button>
+          <button class="btn" id="btnReset">↺ Neu beginnen</button>
+          <button class="btn" id="btnSolve">Lösung zeigen</button>
+          <button class="btn full" id="btnPrint">🖨 Drucken</button>
+        </div>
+        <label class="toggle"><input type="checkbox" id="autoCheck"> Fehler sofort rot anzeigen</label>
+        <div class="legend">
+          <span style="background:var(--okbg);color:var(--ok)">richtig</span>
+          <span style="background:var(--badbg);color:var(--bad)">falsch</span>
+          <span style="background:var(--hintbg);color:var(--hint)">Tipp</span>
+          <span style="font-weight:bold">vorgegeben</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <details>
+          <summary id="rulesTitle">So geht's</summary>
+          <ul id="rules"></ul>
+        </details>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="winTitle">
+    <h3 id="winTitle">🎉 Geschafft!</h3>
+    <p id="winText"></p>
+    <p style="font-size:.9rem;color:var(--muted)">Tipp: Mach einen Screenshot für dein Lernjournal.</p>
+    <button class="btn primary" id="btnWinNew" style="margin-top:10px">Nächstes Rätsel</button>
+    <button class="btn" id="btnWinClose" style="margin-top:10px">Schliessen</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+/* =====================================================================
+   KERN – gemeinsam für alle Rätsel (wird in jede Rätsel-Datei eingebaut)
+   Enthält: Hilfsfunktionen und die Basisklasse GridPuzzle.
+   Ein Rätsel erbt von GridPuzzle und meldet sich mit  const GAME = {...}  an.
+   ===================================================================== */
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function randOf(a){return a[Math.floor(Math.random()*a.length)];}
+const LEVEL_NAMES={sl:'Sehr leicht',l:'Leicht',m:'Mittel',s:'Schwer'};
+
+class GridPuzzle{
+  constructor(def,size,lvlKey,data){
+    this.def=def; this.n=size; this.lvlKey=lvlKey;
+    this.sol=data.sol; this.cur=data.puz.slice();
+    this.given=data.puz.map(v=>v>0);
+    this.hinted=new Array(size*size).fill(false);
+    this.mark=new Array(size*size).fill(0);          // 0 nichts, 1 richtig, 2 falsch
+    this.sel=-1; this.done=false; this.cells=[]; this.ctx=null;
+  }
+
+  /* --- Hooks, die Unterklassen überschreiben --- */
+  baseClass(i){return 'cell';}
+  extraClass(i){return i===this.sel?' sel':'';}
+  paint(i,d){}                                       // Zelleninhalt zeichnen
+  onCell(i){this.sel=i;this.refresh();}
+  handleKey(e){return false;}
+  buildPad(pad){pad.className='padhelp';pad.textContent=this.def.padHelp||'';}
+  afterSet(i,v){}
+  afterReset(){}
+  afterRefresh(){}
+  cellState(i){const v=this.cur[i];if(!v)return 'empty';return v===this.sol[i]?'right':'wrong';}
+  solved(){return this.cur.every((v,k)=>v===this.sol[k]);}
+  pickHint(){
+    const open=[];
+    for(let i=0;i<this.cur.length;i++)if(!this.given[i]&&this.cur[i]!==this.sol[i])open.push(i);
+    if(!open.length)return null;
+    const i=(this.sel>=0&&open.includes(this.sel))?this.sel:randOf(open);
+    return {i,text:'Ein Feld wurde mit einem Tipp ausgefüllt (gelb).'};
+  }
+  revealEmpty(i){this.hinted[i]=true;}
+
+  /* --- gemeinsame Abläufe --- */
+  buildBoard(){
+    const b=document.createElement('div');
+    b.className='board g-'+this.def.id;
+    b.style.setProperty('--n',this.n);
+    b.setAttribute('aria-label',this.def.name+'-Feld');
+    this.cells=[];
+    for(let i=0;i<this.n*this.n;i++){
+      const d=document.createElement('div');
+      d.addEventListener('click',()=>this.onCell(i));
+      b.appendChild(d);this.cells.push(d);
+    }
+    return b;
+  }
+  mount(ctx,stage,pad){
+    this.ctx=ctx;
+    stage.innerHTML='';
+    stage.appendChild(this.buildBoard());
+    pad.className='';pad.removeAttribute('style');pad.innerHTML='';
+    this.buildPad(pad);
+    this.refresh();
+  }
+  refresh(){
+    for(let i=0;i<this.cur.length;i++){
+      const d=this.cells[i];
+      let cls=this.baseClass(i);
+      if(this.given[i])cls+=' given';
+      if(this.hinted[i])cls+=' hint';
+      if(this.mark[i]===1)cls+=' ok';
+      if(this.mark[i]===2)cls+=' bad';
+      cls+=this.extraClass(i);
+      d.className=cls;
+      this.paint(i,d);
+    }
+    this.afterRefresh();
+  }
+  commit(){this.ctx.hideMsg();this.refresh();this.ctx.changed();}
+  setCell(i,v){
+    this.cur[i]=v;this.hinted[i]=false;this.mark[i]=0;
+    if(v&&this.ctx.autoCheck()&&v!==this.sol[i])this.mark[i]=2;
+    this.afterSet(i,v);
+  }
+  editable(){return !this.done&&this.sel>=0&&!this.given[this.sel];}
+  keydown(e){
+    if(this.handleKey(e))return true;
+    const k=e.key,N=this.n;
+    if(!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(k))return false;
+    if(this.sel<0)this.sel=0;
+    else{
+      const r=Math.floor(this.sel/N),c=this.sel%N;
+      if(k==='ArrowLeft'&&c>0)this.sel--;
+      if(k==='ArrowRight'&&c<N-1)this.sel++;
+      if(k==='ArrowUp'&&r>0)this.sel-=N;
+      if(k==='ArrowDown'&&r<N-1)this.sel+=N;
+    }
+    this.refresh();return true;
+  }
+  check(){
+    let wrong=0,empty=0,right=0;
+    for(let i=0;i<this.cur.length;i++){
+      if(this.given[i]||this.hinted[i])continue;
+      const s=this.cellState(i);
+      if(s==='empty'){empty++;this.mark[i]=0;}
+      else if(s==='skip')this.mark[i]=0;
+      else if(s==='right'){this.mark[i]=1;right++;}
+      else{this.mark[i]=2;wrong++;}
+    }
+    this.refresh();
+    return {wrong,empty,right};
+  }
+  hint(){
+    const p=this.pickHint();
+    if(!p)return null;
+    this.cur[p.i]=this.sol[p.i];this.hinted[p.i]=true;this.mark[p.i]=0;
+    this.afterSet(p.i,this.sol[p.i]);
+    this.sel=p.i;this.refresh();
+    return p.text;
+  }
+  reset(){
+    for(let i=0;i<this.cur.length;i++)if(!this.given[i]){this.cur[i]=0;this.hinted[i]=false;}
+    this.mark.fill(0);this.sel=-1;this.done=false;
+    this.afterReset();this.refresh();
+  }
+  reveal(){
+    for(let i=0;i<this.cur.length;i++){
+      if(this.given[i])continue;
+      if(this.cur[i]&&this.cur[i]!==this.sol[i])this.mark[i]=2;
+      else if(this.cur[i]===this.sol[i])this.mark[i]=1;
+      else this.revealEmpty(i);
+      this.cur[i]=this.sol[i];
+    }
+    this.afterReset();   // Notizen o. Ä. löschen
+    this.done=true;this.refresh();
+  }
+  finish(){
+    this.done=true;
+    for(let i=0;i<this.cur.length;i++)if(!this.given[i]&&!this.hinted[i])this.mark[i]=1;
+    this.refresh();
+  }
+  applyAutoCheck(on){
+    for(let i=0;i<this.cur.length;i++){
+      if(this.given[i]||this.hinted[i])continue;
+      if(!on&&this.mark[i]===2)this.mark[i]=0;
+      if(on&&this.cur[i]&&this.cur[i]!==this.sol[i])this.mark[i]=2;
+    }
+    this.refresh();
+  }
+  clearSelection(){this.sel=-1;this.refresh();}
+}
+
+
+/* =====================================================================
+   RÄTSEL-MODUL: Knobeleien (Nachbauten der Aufgaben 12, 16, 23 und 26
+   von https://www.mathematik.ch/puzzle/ – eigene Umsetzung, eigener Code)
+     • Theseus und der Minotaurus   (Nr. 12)
+     • Sixteen-Puzzle               (Nr. 16)
+     • Sechs Hasen                  (Nr. 23)
+     • Flussüberquerung in China    (Nr. 26)
+   Alle vier sind «Zustands-Rätsel»: Es gibt keine Felder zum Ausfüllen,
+   sondern Züge. Eine Breitensuche (BFS) liefert Tipps, Prüfung und Lösung.
+   ===================================================================== */
+/* ===== LOGIK-START ===== */
+/* ---------- Breitensuche: kürzester Zugweg bis zum Ziel ---------- */
+function knSolve(start,spec,cap){
+  if(spec.isGoal(start))return [];
+  const S=[start],P=[-1],M=[null],seen=new Set([spec.key(start)]);
+  const max=cap||1500000;
+  for(let h=0;h<S.length&&S.length<max;h++){
+    for(const mv of spec.moves(S[h])){
+      if(mv.caught)continue;
+      const k=spec.key(mv.next);
+      if(seen.has(k))continue;
+      seen.add(k);S.push(mv.next);P.push(h);M.push(mv);
+      if(spec.isGoal(mv.next)){
+        const path=[];
+        for(let i=S.length-1;i>0;i=P[i])path.push(M[i]);
+        return path.reverse();
+      }
+    }
+  }
+  return null;
+}
+
+/* ---------- Sixteen-Puzzle (Nr. 16) ----------
+   17 Felder in fünf Zeilen (3, 3, 5, 3, 3). 8 goldene Steine oben, 8 silberne unten, Mitte leer.
+   Zug: ein Stein rutscht auf ein angrenzendes leeres Feld ODER springt geradlinig
+   über einen beliebigen Stein auf das leere Feld. Ziel: Gold und Silber tauschen die Plätze. */
+const SX_CELLS=[];
+[[1,3],[1,3],[0,4],[1,3],[1,3]].forEach(([a,b],r)=>{for(let c=a;c<=b;c++)SX_CELLS.push([r,c]);});
+const SX_IDX={};SX_CELLS.forEach(([r,c],i)=>{SX_IDX[r+','+c]=i;});
+const SX_NB=SX_CELLS.map(([r,c])=>{
+  const l=[];
+  for(const [dr,dc] of [[0,1],[0,-1],[1,0],[-1,0]]){
+    const a=SX_IDX[(r+dr)+','+(c+dc)],b=SX_IDX[(r+2*dr)+','+(c+2*dc)];
+    if(a!==undefined)l.push({from:a,mid:-1});
+    if(a!==undefined&&b!==undefined)l.push({from:b,mid:a});
+  }
+  return l;
+});
+const SX_START=[...Array(8).fill(1),0,...Array(8).fill(2)];
+const SX_GOAL=[...Array(8).fill(2),0,...Array(8).fill(1)];
+const SX_GOALKEY=SX_GOAL.join('');
+function sxMoves(s){
+  const e=s.indexOf(0),res=[];
+  for(const {from,mid} of SX_NB[e]){
+    if(!s[from])continue;
+    if(mid>=0&&!s[mid])continue;
+    const next=s.slice();next[e]=s[from];next[from]=0;
+    res.push({from,to:e,jump:mid>=0,next});
+  }
+  return res;
+}
+let sxDistCache=null;
+function sxDist(){            /* Abstand jedes Zustands zum Ziel (Züge sind umkehrbar → Suche vom Ziel aus) */
+  if(sxDistCache)return sxDistCache;
+  const d=new Map([[SX_GOALKEY,0]]),q=[SX_GOAL];
+  for(let h=0;h<q.length;h++){
+    const s=q[h],ds=d.get(s.join(''));
+    for(const m of sxMoves(s)){const k=m.next.join('');if(!d.has(k)){d.set(k,ds+1);q.push(m.next);}}
+  }
+  return sxDistCache=d;
+}
+function sxPlan(s){
+  const d=sxDist();let n=d.get(s.join(''));
+  if(n===undefined)return null;
+  const path=[];
+  while(n>0){
+    const m=sxMoves(s).find(x=>d.get(x.next.join(''))===n-1);
+    path.push(m);s=m.next;n--;
+  }
+  return path;
+}
+function sxSpec(k){            /* k = so viele Züge sind es (mindestens) bis zum Ziel */
+  const d=sxDist();
+  let s=SX_START,rest=d.get(SX_START.join(''));
+  while(rest>k){
+    const opts=sxMoves(s).filter(x=>d.get(x.next.join(''))===rest-1);
+    s=opts[Math.floor(Math.random()*opts.length)].next;rest--;
+  }
+  return {start:s,isGoal:x=>x.join('')===SX_GOALKEY,moves:sxMoves,key:x=>x.join(''),plan:sxPlan,
+          limit:Math.round(rest*80/31),optimum:rest};
+}
+
+/* ---------- Sechs Hasen (Nr. 23) ----------
+   Gelbe Hasen hüpfen nach rechts, graue nach links: ein Feld vorwärts oder über einen anderen Hasen. */
+function hrSpec(n){
+  const start=[...Array(n).fill(1),0,...Array(n).fill(2)],goal=[...Array(n).fill(2),0,...Array(n).fill(1)].join('');
+  return {
+    n,start,optimum:n*n+2*n,
+    isGoal:s=>s.join('')===goal,
+    key:s=>s.join(''),
+    moves(s){
+      const e=s.indexOf(0),res=[];
+      const add=(from,col)=>{
+        if(from<0||from>=s.length||s[from]!==col)return;
+        if(Math.abs(from-e)===2&&!s[(from+e)/2])return;
+        const next=s.slice();next[e]=col;next[from]=0;
+        res.push({from,to:e,jump:Math.abs(from-e)===2,next});
+      };
+      add(e-1,1);add(e-2,1);add(e+1,2);add(e+2,2);
+      return res;
+    }
+  };
+}
+
+/* ---------- Flussüberquerung in China (Nr. 26) ----------
+   Personen: V Vater, M Mutter, T Mädchen, S Knabe, P Polizist, D Dieb.
+   Floss: höchstens 2 Personen, nur V, M oder P können steuern. Die Regeln gelten für jede Gruppe,
+   die zusammen ist: an beiden Ufern und auf dem Floss. */
+const RV_INFO={V:['Vater','👨'],M:['Mutter','👩'],T:['Mädchen','👧'],S:['Knabe','👦'],P:['Polizist','👮'],D:['Dieb','🦹']};
+function rvWhy(names,g){
+  const has=k=>g.some(i=>names[i]===k);
+  if(has('V')&&has('T')&&!has('M'))return 'Der Vater darf nur in Begleitung der Mutter mit den Mädchen zusammen sein.';
+  if(has('M')&&has('S')&&!has('V'))return 'Die Mutter darf nur in Begleitung des Vaters mit den Knaben zusammen sein.';
+  if(has('D')&&(has('V')||has('M')||has('T')||has('S'))&&!has('P'))return 'Der Dieb darf nur in Begleitung des Polizisten mit Familienmitgliedern zusammen sein.';
+  return null;
+}
+function rvSpec(names){
+  const n=names.length;
+  const norm=s=>({pos:s.pos.map(p=>p===2?s.raft:p),raft:s.raft});
+  return {
+    names,norm,
+    start:{pos:Array(n).fill(0),raft:0},
+    isGoal:s=>s.pos.every(p=>p===1),
+    key:s=>s.pos.join('')+s.raft,
+    moves(s0){
+      const s=norm(s0),side=s.raft,res=[];
+      const here=[],other=[];
+      for(let i=0;i<n;i++)(s.pos[i]===side?here:other).push(i);
+      const groups=[];
+      for(const a of here){groups.push([a]);for(const b of here)if(b>a)groups.push([a,b]);}
+      for(const pas of groups){
+        if(!pas.some(i=>'VMP'.includes(names[i])))continue;
+        if(rvWhy(names,pas))continue;
+        if(rvWhy(names,here.filter(i=>!pas.includes(i))))continue;
+        if(rvWhy(names,other.concat(pas)))continue;
+        const pos=s.pos.slice();for(const i of pas)pos[i]=1-side;
+        res.push({pas,next:{pos,raft:1-side}});
+      }
+      return res;
+    },
+    plan(s){return knSolve(norm(s),this);},
+    optimum:null
+  };
+}
+
+/* ---------- Theseus und der Minotaurus (Nr. 12) ----------
+   Labyrinth W×H. Wände: wr[r][c] = Wand rechts von (r,c); wd[r][c] = Wand unterhalb von (r,c).
+   Pro Zug von Theseus (1 Feld oder Pause) macht der Minotaurus bis zu 2 Schritte auf Theseus zu:
+   zuerst waagrecht, geht das nicht, senkrecht, geht auch das nicht, bleibt er stehen. */
+function mzOpen(mz,i,dr,dc){
+  const W=mz.W,H=mz.H,r=Math.floor(i/W),c=i%W,r2=r+dr,c2=c+dc;
+  if(r2<0||r2>=H||c2<0||c2>=W)return false;
+  if(dc===1)return !mz.wr[r][c];
+  if(dc===-1)return !mz.wr[r][c2];
+  if(dr===1)return !mz.wd[r][c];
+  return !mz.wd[r2][c];
+}
+function mzMinoStep(mz,m,t){
+  const W=mz.W,mr=Math.floor(m/W),mc=m%W,tr=Math.floor(t/W),tc=t%W;
+  if(mc!==tc){const dc=tc>mc?1:-1;if(mzOpen(mz,m,0,dc))return m+dc;}
+  if(mr!==tr){const dr=tr>mr?1:-1;if(mzOpen(mz,m,dr,0))return m+dr*W;}
+  return m;
+}
+const MZ_DIRS=[['hoch',-1,0],['runter',1,0],['links',0,-1],['rechts',0,1]];
+function mzSpec(mz,t,m,ex){
+  const W=mz.W;
+  return {
+    mz,ex,start:{t,m},
+    isGoal:s=>s.t===ex,
+    key:s=>s.t*mz.W*mz.H+s.m,
+    moves(s){
+      const res=[];
+      for(const [name,dr,dc] of [...MZ_DIRS,['Pause',0,0]]){
+        if((dr||dc)&&!mzOpen(mz,s.t,dr,dc))continue;
+        const t2=s.t+dr*W+dc;
+        if(t2===ex){res.push({dir:name,next:{t:t2,m:s.m},caught:false});continue;}
+        if(t2===s.m){res.push({dir:name,next:{t:t2,m:s.m},caught:true});continue;}
+        let m2=mzMinoStep(mz,s.m,t2),caught=m2===t2;
+        if(!caught){m2=mzMinoStep(mz,m2,t2);caught=m2===t2;}
+        res.push({dir:name,next:{t:t2,m:m2},caught});
+      }
+      return res;
+    }
+  };
+}
+function mzGen(W,H){
+  const wr=Array.from({length:H},()=>Array(W-1).fill(true)),wd=Array.from({length:H-1},()=>Array(W).fill(true));
+  const seen=new Set([0]),stack=[0];
+  while(stack.length){
+    const i=stack[stack.length-1],r=Math.floor(i/W),c=i%W;
+    const opts=shuffle(MZ_DIRS.map(d=>d).filter(([n,dr,dc])=>{
+      const r2=r+dr,c2=c+dc;return r2>=0&&r2<H&&c2>=0&&c2<W&&!seen.has(r2*W+c2);}));
+    if(!opts.length){stack.pop();continue;}
+    const [,dr,dc]=opts[0],j=(r+dr)*W+c+dc;
+    if(dc===1)wr[r][c]=false;else if(dc===-1)wr[r][c-1]=false;else if(dr===1)wd[r][c]=false;else wd[r-1][c]=false;
+    seen.add(j);stack.push(j);
+  }
+  /* zusätzliche Durchgänge: Kreise im Labyrinth, damit der Minotaurus umgangen werden kann */
+  for(let k=0;k<Math.round(W*H/5);k++){
+    if(Math.random()<.5){const r=Math.floor(Math.random()*H),c=Math.floor(Math.random()*(W-1));wr[r][c]=false;}
+    else{const r=Math.floor(Math.random()*(H-1)),c=Math.floor(Math.random()*W);wd[r][c]=false;}
+  }
+  return {W,H,wr,wd};
+}
+function mzPlain(mz,a,b){        /* Weglänge ohne Minotaurus */
+  const d=new Map([[a,0]]),q=[a];
+  for(let h=0;h<q.length;h++){
+    const i=q[h];if(i===b)return d.get(i);
+    for(const [,dr,dc] of MZ_DIRS)if(mzOpen(mz,i,dr,dc)){const j=i+dr*mz.W+dc;if(!d.has(j)){d.set(j,d.get(i)+1);q.push(j);}}
+  }
+  return null;
+}
+/* Niveau: [Breite, Höhe, kürzeste Lösung mindestens, Mehraufwand gegenüber dem freien Weg] */
+const MZ_LEVELS={sl:[5,5,5,0],l:[6,6,9,1],m:[7,7,13,3],s:[8,8,18,5]};
+function mzCreate(lvl,tries){
+  const [W,H,minLen,extra]=MZ_LEVELS[lvl];
+  let best=null,bestLen=-1;
+  for(let n=0;n<(tries||400);n++){
+    const mz=mzGen(W,H),N=W*H;
+    const t=Math.floor(Math.random()*N),ex=Math.floor(Math.random()*N),m=Math.floor(Math.random()*N);
+    if(t===ex||t===m||ex===m)continue;
+    const plain=mzPlain(mz,t,ex);
+    if(plain===null||plain<Math.min(W+H-3,minLen-extra-2))continue;
+    if(Math.abs(Math.floor(m/W)-Math.floor(t/W))+Math.abs(m%W-t%W)<3)continue;
+    const spec=mzSpec(mz,t,m,ex),path=knSolve(spec.start,spec,200000);
+    if(!path||path.length<minLen||path.length<plain+extra)continue;
+    if(lvl!=='s'){best={spec,len:path.length};break;}   // Stufen 1–3: erster passender genügt
+    if(path.length>bestLen){bestLen=path.length;best={spec,len:path.length};}
+  }
+  if(best)best.spec.optimum=best.len;
+  return best&&best.spec;
+}
+/* Fluss und Hasen: Niveaus */
+const RV_LEVELS={sl:'VMTPD',l:'VMTSPD',m:'VMTTSPD',s:'VMTTSSPD'};
+const HR_LEVELS={sl:2,l:3,m:4,s:5};
+const SX_LEVELS={sl:6,l:14,m:22,s:31};
+/* ===== LOGIK-ENDE ===== */
+
+/* ---------- gemeinsame Klasse für alle Zustands-Rätsel ---------- */
+class StatePuzzle{
+  constructor(def,size,lvlKey,spec){
+    this.def=def;this.n=size;this.lvlKey=lvlKey;this.spec=spec;
+    this.state=spec.start;this.stack=[];this.moves=0;this.done=false;this.lost=false;this.ctx=null;
+  }
+  mount(ctx,stage,pad){
+    this.ctx=ctx;this.stage=stage;
+    stage.innerHTML='';pad.className='';pad.removeAttribute('style');pad.innerHTML='';
+    this.spec.build(this,stage,pad);
+    this.refresh();
+  }
+  refresh(){
+    this.spec.draw(this);
+    if(this.info){
+      const lim=this.spec.limit;
+      this.info.innerHTML=`Züge: <b>${this.moves}</b>${lim?` &nbsp;(erlaubt: höchstens <b>${lim}</b>)`:''}`;
+    }
+  }
+  /* Zug ausführen (count=false: Zwischenschritt wie «aufs Floss steigen», zählt nicht) */
+  step(mv,count=true){
+    if(this.done||this.lost)return false;
+    if(count){
+      const lim=this.spec.limit;
+      if(lim&&this.moves>=lim){
+        this.ctx.msg(`Du hast schon ${lim} Züge gebraucht – das ist die Grenze. Nimm Züge zurück («↶ Zug zurück») oder beginne neu.`,'warn');
+        return false;
+      }
+      this.stack.push(this.state);this.moves++;
+    }
+    this.state=mv.next;this.lost=!!mv.caught;
+    this.ctx.hideMsg();this.refresh();
+    if(this.lost)this.ctx.msg('Der Minotaurus hat Theseus erwischt! Mit «↶ Zug zurück» nimmst du den letzten Zug zurück.','warn');
+    else this.ctx.changed();
+    return true;
+  }
+  undo(){
+    if(this.done)return;
+    if(!this.stack.length){this.ctx.msg('Es gibt keinen Zug zum Zurücknehmen.','info');return;}
+    this.state=this.stack.pop();this.moves--;this.lost=false;
+    this.ctx.hideMsg();this.refresh();
+  }
+  plan(){return this.spec.plan?this.spec.plan(this.state):knSolve(this.state,this.spec,300000);}
+  solved(){return !this.lost&&this.spec.isGoal(this.state);}
+  customCheck(){
+    if(this.lost)return {text:'Theseus wurde vom Minotaurus erwischt. Nimm den letzten Zug zurück.',type:'warn'};
+    const path=this.plan();
+    if(!path)return {text:'Von hier aus ist das Ziel nicht mehr erreichbar. Nimm Züge zurück («↶ Zug zurück») oder beginne neu.',type:'warn'};
+    const rest=this.spec.limit?this.spec.limit-this.moves:Infinity;
+    if(path.length>rest)return {text:`Mit den erlaubten Zügen schaffst du es von hier aus nicht mehr (nötig: mindestens ${path.length}, erlaubt: noch ${rest}). Nimm Züge zurück.`,type:'warn'};
+    return {text:`Gut so – das Ziel ist noch erreichbar (mindestens ${path.length} weitere ${path.length===1?'Zug':'Züge'}).`,type:'good'};
+  }
+  hint(){
+    if(this.done)return null;
+    if(this.lost)return 'Theseus wurde erwischt – nimm zuerst den letzten Zug zurück («↶ Zug zurück»).';
+    const path=this.plan();
+    if(!path)return 'Von hier aus gibt es keinen Weg zum Ziel mehr – nimm Züge zurück («↶ Zug zurück») oder beginne neu.';
+    if(!path.length)return null;
+    if(this.spec.hintApply)return this.spec.hintApply(this,path);
+    const mv=path[0];
+    if(!this.step(mv))return null;
+    return `Tipp: ${this.spec.describe(mv)} – dieser Zug wurde schon ausgeführt. Noch ${path.length-1} ${path.length-1===1?'Zug':'Züge'} bis zum Ziel.`;
+  }
+  reset(){
+    this.state=this.spec.start;this.stack=[];this.moves=0;this.lost=false;this.done=false;
+    this.refresh();
+  }
+  reveal(){
+    if(this.lost&&this.stack.length){this.state=this.stack.pop();this.lost=false;}
+    const path=this.plan()||[];
+    this.done=true;
+    let i=0;
+    const run=()=>{
+      if(i>=path.length||!this.stage.isConnected)return;
+      const mv=path[i++];
+      this.state=this.spec.revealNext?this.spec.revealNext(this,mv):mv.next;
+      this.refresh();setTimeout(run,380);
+    };
+    run();
+  }
+  finish(){this.done=true;this.refresh();}
+  winInfo(){
+    const o=this.spec.optimum;
+    return `Züge: <b>${this.moves}</b>${o?` (kürzeste Lösung: ${o})`:''}`;
+  }
+  keydown(e){return this.spec.keydown?this.spec.keydown(this,e):false;}
+  applyAutoCheck(){}
+  clearSelection(){}
+}
+
+/* ---------- Darstellung ---------- */
+const SVGNS='http://www.w3.org/2000/svg';
+function knFrame(p,stage,viewBox,cls){
+  const wrap=document.createElement('div');wrap.className='kn-wrap '+(cls||'');
+  p.info=document.createElement('div');p.info.className='kn-info';
+  wrap.appendChild(p.info);
+  const body=document.createElement('div');body.className='kn-body';
+  wrap.appendChild(body);
+  stage.appendChild(wrap);
+  let svg=null;
+  if(viewBox){
+    svg=document.createElementNS(SVGNS,'svg');
+    svg.setAttribute('viewBox',viewBox);svg.setAttribute('class','kn-svg');
+    svg.setAttribute('role','img');
+    body.appendChild(svg);
+  }
+  return {wrap,body,svg};
+}
+const PAD_HELP=t=>pad=>{pad.className='padhelp';pad.textContent=t;};
+
+/* Theseus */
+function uiTheseus(spec){
+  const mz=spec.mz,W=mz.W,H=mz.H,S=40;
+  spec.describe=mv=>mv.dir==='Pause'?'Theseus bleibt stehen (Pause)':`Theseus geht ${mv.dir}`;
+  spec.build=(p,stage,pad)=>{
+    const f=knFrame(p,stage,`0 0 ${W*S} ${H*S}`,'kn-mz');p.svg=f.svg;
+    f.svg.setAttribute('aria-label','Labyrinth mit Theseus (rot), Minotaurus (schwarz) und Ausgang (grün)');
+    const go=(name)=>{const mv=spec.moves(p.state).find(m=>m.dir===name);if(mv)p.step(mv);else p.ctx.msg('Dort ist eine Wand.','info');};
+    f.svg.addEventListener('click',e=>{
+      const rc=f.svg.getBoundingClientRect(),x=(e.clientX-rc.left)/rc.width*W,y=(e.clientY-rc.top)/rc.height*H;
+      const c=Math.floor(x),r=Math.floor(y),t=p.state.t,tr=Math.floor(t/W),tc=t%W;
+      if(r===tr&&c===tc)return go('Pause');
+      if(r===tr&&c===tc+1)return go('rechts');
+      if(r===tr&&c===tc-1)return go('links');
+      if(c===tc&&r===tr+1)return go('runter');
+      if(c===tc&&r===tr-1)return go('hoch');
+      p.ctx.msg('Klicke auf ein Nachbarfeld von Theseus (oder auf Theseus selbst für eine Pause).','info');
+    });
+    pad.className='kn-pad';
+    const mk=(txt,name,label,col)=>{const b=document.createElement('button');b.textContent=txt;b.setAttribute('aria-label',label);b.style.gridColumn=col;b.addEventListener('click',()=>go(name));pad.appendChild(b);};
+    mk('▲','hoch','Hoch','2');mk('◀','links','Links','1');mk('Pause (d)','Pause','Pause','2');mk('▶','rechts','Rechts','3');mk('▼','runter','Runter','2');
+    const help=document.createElement('p');help.className='padhelp';help.style.gridColumn='1 / 4';
+    help.textContent='Pfeiltasten oder Knöpfe: Theseus bewegen · D: Pause · Z: Zug zurück';
+    pad.appendChild(help);
+  };
+  spec.draw=p=>{
+    const s=p.state,ex=spec.ex;let h='';
+    const cx=i=>(i%W)*S+S/2,cy=i=>Math.floor(i/W)*S+S/2;
+    h+=`<rect x="0" y="0" width="${W*S}" height="${H*S}" fill="#fff"/>`;
+    h+=`<rect x="${(ex%W)*S+3}" y="${Math.floor(ex/W)*S+3}" width="${S-6}" height="${S-6}" rx="5" fill="#d1f0dc" stroke="#15803d" stroke-width="2"/>`;
+    h+=`<text x="${cx(ex)}" y="${cy(ex)+5}" text-anchor="middle" font-size="14" font-weight="bold" fill="#15803d">A</text>`;
+    let w='';
+    for(let r=0;r<H;r++)for(let c=0;c<W;c++){
+      if(c<W-1&&mz.wr[r][c])w+=`M${(c+1)*S} ${r*S}V${(r+1)*S}`;
+      if(r<H-1&&mz.wd[r][c])w+=`M${c*S} ${(r+1)*S}H${(c+1)*S}`;
+    }
+    h+=`<path d="${w}" stroke="#334155" stroke-width="4" stroke-linecap="round" fill="none"/>`;
+    h+=`<rect x="1.5" y="1.5" width="${W*S-3}" height="${H*S-3}" fill="none" stroke="#334155" stroke-width="4"/>`;
+    const m=s.m,mx=cx(m),my=cy(m);
+    h+=`<polygon points="${mx-9},${my-6} ${mx-13},${my-16} ${mx-4},${my-10}" fill="#111"/><polygon points="${mx+9},${my-6} ${mx+13},${my-16} ${mx+4},${my-10}" fill="#111"/>`;
+    h+=`<circle cx="${mx}" cy="${my}" r="${S*.32}" fill="#111"/>`;
+    h+=`<circle cx="${cx(s.t)+(s.t===m?5:0)}" cy="${cy(s.t)}" r="${S*.27}" fill="${p.lost?'#b91c1c':'#ef4444'}" stroke="#7f1d1d" stroke-width="2"/>`;
+    p.svg.innerHTML=h;
+  };
+  spec.keydown=(p,e)=>{
+    const map={ArrowUp:'hoch',ArrowDown:'runter',ArrowLeft:'links',ArrowRight:'rechts',d:'Pause',D:'Pause'};
+    const name=map[e.key];if(!name)return false;
+    if(p.done)return true;
+    const mv=spec.moves(p.state).find(m=>m.dir===name);
+    if(mv)p.step(mv);
+    return true;
+  };
+  return spec;
+}
+
+/* Sixteen */
+function uiSixteen(spec){
+  const S=64;
+  spec.describe=mv=>`ein Stein ${mv.jump?'springt':'rutscht'} auf das leere Feld`;
+  spec.build=(p,stage,pad)=>{
+    const f=knFrame(p,stage,`0 0 ${5*S} ${5*S}`,'kn-sx');p.svg=f.svg;
+    f.svg.setAttribute('aria-label','Sixteen-Puzzle: 8 goldene und 8 silberne Steine');
+    f.svg.addEventListener('click',e=>{
+      const g=e.target.closest('[data-i]');if(!g||p.done)return;
+      const i=+g.dataset.i,mv=sxMoves(p.state).find(m=>m.from===i);
+      if(!mv){p.ctx.msg(p.state[i]?'Dieser Stein kann nicht ziehen: Er muss neben dem leeren Feld stehen oder geradlinig über einen Stein hinein springen.':'Klicke auf den Stein, der ziehen soll.','info');return;}
+      p.step(mv);
+    });
+    PAD_HELP('Stein anklicken: er rutscht oder springt auf das leere Feld. Ziel: Gold und Silber tauschen die Plätze.')(pad);
+  };
+  spec.draw=p=>{
+    const s=p.state;let h='';
+    SX_CELLS.forEach(([r,c],i)=>{
+      const x=c*S+S/2,y=r*S+S/2,v=s[i];
+      const can=!p.done&&!p.lost&&v&&sxMoves(s).some(m=>m.from===i);
+      h+=`<g data-i="${i}" class="${v?'st':'em'}${can?' can':''}"><rect x="${c*S+2}" y="${r*S+2}" width="${S-4}" height="${S-4}" rx="10" fill="#f4f8e2" stroke="#d3dbbd"/>`;
+      if(v)h+=`<circle cx="${x}" cy="${y}" r="${S*.36}" fill="${v===1?'#e0a800':'#b9c3cc'}" stroke="${v===1?'#8a6500':'#64707c'}" stroke-width="3"/><circle cx="${x-8}" cy="${y-9}" r="6" fill="#fff" opacity=".45"/>`;
+      h+=`</g>`;
+    });
+    p.svg.innerHTML=h;
+  };
+  return spec;
+}
+
+/* Sechs Hasen */
+function uiHares(spec){
+  const n=spec.n,S=56,N=2*n+1;
+  spec.describe=mv=>`ein Hase ${mv.jump?'springt':'hüpft'} von Platz ${mv.from+1} auf Platz ${mv.to+1}`;
+  const rabbit=(x,col)=>`<g transform="translate(${x},0)"><ellipse cx="-7" cy="26" rx="5" ry="14" fill="${col}" stroke="#333" stroke-width="1.5"/><ellipse cx="7" cy="26" rx="5" ry="14" fill="${col}" stroke="#333" stroke-width="1.5"/><ellipse cx="0" cy="72" rx="19" ry="15" fill="${col}" stroke="#333" stroke-width="1.5"/><circle cx="0" cy="52" r="13" fill="${col}" stroke="#333" stroke-width="1.5"/><circle cx="-4.5" cy="49" r="1.9" fill="#222"/><circle cx="4.5" cy="49" r="1.9" fill="#222"/><circle cx="0" cy="55" r="2" fill="#c0392b"/></g>`;
+  spec.build=(p,stage,pad)=>{
+    const f=knFrame(p,stage,`0 0 ${N*S} 120`,'kn-hr');p.svg=f.svg;
+    f.svg.setAttribute('aria-label','Hasen in einer Reihe: gelbe links, graue rechts, eine Lücke');
+    f.svg.addEventListener('click',e=>{
+      const g=e.target.closest('[data-i]');if(!g||p.done)return;
+      const i=+g.dataset.i,mv=spec.moves(p.state).find(m=>m.from===i);
+      if(!mv){p.ctx.msg(p.state[i]?'Dieser Hase kann nicht ziehen: Gelbe hüpfen nur nach rechts, graue nur nach links – ein Feld oder über einen Hasen in die Lücke.':'Klicke auf den Hasen, der hüpfen soll.','info');return;}
+      p.step(mv);
+    });
+    PAD_HELP('Hasen anklicken: Gelbe hüpfen nach rechts, graue nach links – in die Lücke, auch über einen anderen Hasen. Ziel: Farben tauschen.')(pad);
+  };
+  spec.draw=p=>{
+    const s=p.state;let h='';
+    for(let i=0;i<N;i++){
+      const v=s[i],can=!p.done&&!p.lost&&v&&spec.moves(s).some(m=>m.from===i);
+      h+=`<g data-i="${i}" class="${v?'st':'em'}${can?' can':''}"><rect x="${i*S+3}" y="6" width="${S-6}" height="108" rx="10" fill="#f4f8e2" stroke="#d3dbbd"/>`;
+      if(v)h+=rabbit(i*S+S/2,v===1?'#f2c230':'#a4acb5');
+      h+=`<text x="${i*S+S/2}" y="112" text-anchor="middle" font-size="11" fill="#5f6b76">${i+1}</text></g>`;
+    }
+    p.svg.innerHTML=h;
+  };
+  return spec;
+}
+
+/* Flussüberquerung */
+function uiRiver(spec){
+  const names=spec.names,n=names.length;
+  spec.describe=mv=>`fahre mit ${mv.pas.map(i=>RV_INFO[names[i]][0]).join(' und ')}`;
+  const label=i=>{
+    const k=names[i];let c=0;for(let j=0;j<=i;j++)if(names[j]===k)c++;
+    const tot=names.filter(x=>x===k).length;
+    return RV_INFO[k][0]+(tot>1?' '+c:'');
+  };
+  spec.build=(p,stage,pad)=>{
+    const f=knFrame(p,stage,null,'kn-rv');
+    f.body.innerHTML=`<div class="rv"><div class="bank" id="rvL"><h4>Linkes Ufer</h4><div class="ppl"></div></div><div class="water"><div class="raft" id="rvR"><div class="ppl"></div><span>Floss</span></div></div><div class="bank" id="rvRt"><h4>Rechtes Ufer</h4><div class="ppl"></div></div></div>`;
+    p.rv={L:f.body.querySelector('#rvL .ppl'),R:f.body.querySelector('#rvRt .ppl'),raft:f.body.querySelector('#rvR'),rppl:f.body.querySelector('#rvR .ppl')};
+    pad.className='kn-pad kn-pad1';
+    const b=document.createElement('button');b.className='go';b.textContent='⛵ Floss fahren';
+    b.addEventListener('click',()=>cross(p));
+    pad.appendChild(b);
+    const help=document.createElement('p');help.className='padhelp';
+    help.textContent='Person anklicken: aufs Floss steigen oder wieder aussteigen. Dann «Floss fahren». Höchstens 2 Personen; steuern können nur Vater, Mutter und Polizist.';
+    pad.appendChild(help);
+  };
+  function chip(p,i,where){
+    const b=document.createElement('button');
+    b.className='chip';b.innerHTML=`<span class="em">${RV_INFO[names[i]][1]}</span><span class="nm">${label(i)}</span>`;
+    b.setAttribute('aria-label',label(i)+(where==='raft'?' (auf dem Floss)':''));
+    b.addEventListener('click',()=>clickPerson(p,i));
+    return b;
+  }
+  function clickPerson(p,i){
+    if(p.done)return;
+    const s=p.state,pos=s.pos.slice();
+    if(pos[i]===2){pos[i]=s.raft;p.ctx.hideMsg();p.state={pos,raft:s.raft};p.refresh();return;}
+    if(pos[i]!==s.raft){p.ctx.msg('Das Floss liegt am anderen Ufer.','info');return;}
+    if(pos.filter(x=>x===2).length>=2){p.ctx.msg('Auf dem Floss ist nur Platz für zwei Personen.','warn');return;}
+    pos[i]=2;p.ctx.hideMsg();p.state={pos,raft:s.raft};p.refresh();
+  }
+  function cross(p){
+    if(p.done)return;
+    const s=p.state,pas=[];s.pos.forEach((x,i)=>{if(x===2)pas.push(i);});
+    if(!pas.length){p.ctx.msg('Auf dem Floss ist niemand.','info');return;}
+    if(!pas.some(i=>'VMP'.includes(names[i]))){p.ctx.msg('Das Floss kann nur vom Vater, von der Mutter oder vom Polizisten gesteuert werden.','warn');return;}
+    const side=s.raft,here=[],other=[];
+    s.pos.forEach((x,i)=>{if(x===2)return;if(x===side)here.push(i);else other.push(i);});
+    const why=rvWhy(names,pas)||rvWhy(names,here)||rvWhy(names,other.concat(pas));
+    if(why){p.ctx.msg('Das geht nicht: '+why,'warn');return;}
+    const pos=s.pos.slice();for(const i of pas)pos[i]=1-side;
+    p.step({pas,next:{pos,raft:1-side}});
+  }
+  spec.draw=p=>{
+    const s=p.state,r=p.rv;
+    r.L.innerHTML='';r.R.innerHTML='';r.rppl.innerHTML='';
+    for(let i=0;i<n;i++){
+      if(s.pos[i]===2)r.rppl.appendChild(chip(p,i,'raft'));
+      else (s.pos[i]===0?r.L:r.R).appendChild(chip(p,i,'bank'));
+    }
+    r.raft.className='raft '+(s.raft===0?'atL':'atR');
+  };
+  spec.hintApply=(p,path)=>{
+    const mv=path[0],pos=p.state.pos.map(x=>x===2?p.state.raft:x);
+    for(const i of mv.pas)pos[i]=2;
+    p.state={pos,raft:p.state.raft};p.refresh();
+    return `Tipp: ${spec.describe(mv)} – diese Personen sind schon aufs Floss gestiegen. Jetzt «Floss fahren». Noch ${path.length} ${path.length===1?'Überfahrt':'Überfahrten'} bis zum Ziel.`;
+  };
+  return spec;
+}
+
+/* ----- Anmeldung beim Kern ----- */
+const KN_TITLES={theseus:'Theseus und der Minotaurus',sixteen:'Sixteen-Puzzle',hasen:'Sechs Hasen',fluss:'Flussüberquerung in China'};
+const KN_NAMES={theseus:'Theseus',sixteen:'Sixteen',hasen:'Sechs Hasen',fluss:'Fluss'};
+const GAME={
+  title:'Knobeleien-Trainer',
+  id:'knobeleien', name:'Knobelei', icon:'🧩', units:['Zug','Züge'],
+  intro:'Vier Klassiker zum Tüfteln: Theseus und der Minotaurus, Sixteen-Puzzle, Sechs Hasen, Flussüberquerung.',
+  sizes:['theseus','sixteen','hasen','fluss'], size:'theseus', lvl:'sl',
+  sizeTitle:'Knobelei', newLabel:'Neue Knobelei',
+  sizeLabel:v=>KN_NAMES[v],
+  tag:(s,l)=>`${KN_NAMES[s]} · ${LEVEL_NAMES[l]}`,
+  tools:{notes:false,undo:true,auto:false,legend:false},
+  padHelp:'', missing:()=>'',
+  levels:{
+    sl:{desc:s=>({theseus:'Kleines Labyrinth (5×5), kurzer Weg.',sixteen:'Der Start liegt nur etwa 6 Züge vom Ziel entfernt.',hasen:'Je 2 Hasen pro Farbe (8 Züge).',fluss:'Nur Vater, Mutter, 1 Mädchen, Polizist und Dieb (7 Überfahrten).'})[s]},
+    l: {desc:s=>({theseus:'Labyrinth 6×6, der Minotaurus ist schon lästiger.',sixteen:'Start etwa 14 Züge vom Ziel entfernt.',hasen:'Je 3 Hasen pro Farbe – die Aufgabe der Vorlage (15 Züge).',fluss:'Dazu kommt ein Knabe (9 Überfahrten).'})[s]},
+    m: {desc:s=>({theseus:'Labyrinth 7×7. Oft musst du den Minotaurus erst in die falsche Richtung locken.',sixteen:'Start etwa 22 Züge vom Ziel entfernt.',hasen:'Je 4 Hasen pro Farbe (24 Züge).',fluss:'2 Mädchen und 1 Knabe (13 Überfahrten).'})[s]},
+    s: {desc:s=>({theseus:'Labyrinth 8×8 mit langer, trickreicher Lösung.',sixteen:'Die volle Aufgabe: Gold und Silber tauschen, höchstens 80 Züge (kürzeste Lösung: 31).',hasen:'Je 5 Hasen pro Farbe (35 Züge).',fluss:'Die volle Aufgabe: Vater, Mutter, 2 Mädchen, 2 Knaben, Polizist und Dieb (17 Überfahrten).'})[s]}
+  },
+  create(size,lvl){
+    let spec=null;
+    if(size==='theseus'){spec=mzCreate(lvl);if(spec)uiTheseus(spec);}
+    else if(size==='sixteen')spec=uiSixteen(sxSpec(SX_LEVELS[lvl]));
+    else if(size==='hasen')spec=uiHares(hrSpec(HR_LEVELS[lvl]));
+    else if(size==='fluss'){spec=uiRiver(rvSpec([...RV_LEVELS[lvl]]));spec.optimum=knSolve(spec.start,spec).length;}
+    if(!spec)return null;
+    if(size==='fluss')spec.optimum=spec.optimum||null;
+    return new StatePuzzle(this,size,lvl,spec);
+  },
+  rules(size){
+    const common='<li><b>Hilfen:</b> «↶ Zug zurück» (oder Taste Z) nimmt den letzten Zug zurück. «Tipp» führt den nächsten besten Zug aus. «Überprüfen» sagt dir, ob das Ziel noch erreichbar ist. «Lösung zeigen» spielt die kürzeste Lösung vor.</li>';
+    return ({
+      theseus:`
+        <li>Bringe <b>Theseus</b> (rote Kugel) zum <b>Ausgang A</b> (grünes Feld), ohne vom <b>Minotaurus</b> (schwarze Kugel) erwischt zu werden.</li>
+        <li>Theseus geht pro Zug <b>ein Feld</b> (nicht durch Wände) – oder macht eine <b>Pause</b>.</li>
+        <li>Danach geht der Minotaurus <b>zwei Felder</b> auf Theseus zu: Er versucht zuerst <b>waagrecht</b> näher zu kommen, geht das nicht, <b>senkrecht</b>, geht auch das nicht, bleibt er stehen.</li>
+        <li>Steht der Minotaurus auf Theseus’ Feld, ist das Spiel verloren (Zug zurück!).</li>
+        <li><b>Bedienung:</b> Pfeiltasten oder Pfeilknöpfe, Taste D = Pause, oder auf ein Nachbarfeld klicken.</li>
+        <li><i>Hinweis:</i> Die Labyrinthe sind eigene Aufgaben; das Programm erstellt sie zufällig und prüft, dass sie lösbar sind.</li>`+common,
+      sixteen:`
+        <li>Das Brett hat 17 Felder. Oben liegen 8 <b>goldene</b>, unten 8 <b>silberne</b> Steine, das mittlere Feld ist leer.</li>
+        <li>Ein Stein darf auf das <b>leere Feld rutschen</b> (ein Feld waagrecht oder senkrecht) oder <b>geradlinig über einen anderen Stein</b> (egal welche Farbe) in das leere Feld <b>springen</b>.</li>
+        <li><b>Ziel:</b> Gold und Silber haben die Plätze getauscht. Auf dem vollen Niveau sind höchstens <b>80 Züge</b> erlaubt.</li>
+        <li><i>Hinweis:</i> Mit diesen Regeln (nur waagrecht/senkrecht) liegt die kürzeste Lösung bei 31 Zügen; die berühmten 46 Züge von Dudeney gehören zur Originalvariante der Vorlage.</li>`+common,
+      hasen:`
+        <li>Sieben Plätze in einer Reihe, dazwischen eine <b>Lücke</b>. Links sitzen gelbe, rechts graue Hasen.</li>
+        <li>Gelbe Hasen hüpfen nach <b>rechts</b>, graue nach <b>links</b> – immer in die Lücke: um <b>ein Feld</b> oder <b>über einen Hasen</b> (egal welcher Farbe).</li>
+        <li><b>Ziel:</b> Die gelben Hasen sitzen rechts, die grauen links.</li>
+        <li><b>Tipp:</b> Mit weniger Hasen pro Farbe das Muster erkennen – dann wird es einfacher.</li>`+common,
+      fluss:`
+        <li>Alle Personen müssen mit dem <b>Floss</b> vom linken ans rechte Ufer.</li>
+        <li>Das Floss trägt <b>höchstens 2 Personen</b>. Steuern können nur <b>Vater, Mutter und Polizist</b>.</li>
+        <li>Der Vater darf nur <b>in Begleitung der Mutter</b> mit den <b>Mädchen</b> zusammen sein.</li>
+        <li>Die Mutter darf nur <b>in Begleitung des Vaters</b> mit den <b>Knaben</b> zusammen sein.</li>
+        <li>Der Dieb darf nur <b>in Begleitung des Polizisten</b> mit <b>Familienmitgliedern</b> zusammen sein.</li>
+        <li>Die Regeln gelten an beiden Ufern <b>und</b> auf dem Floss.</li>
+        <li><i>Annahme:</i> In der Vorlage ist die Zahl der Kinder nicht genannt; hier gibt es – wie in der bekannten Fassung – 2 Mädchen und 2 Knaben.</li>`+common
+    })[size];
+  }
+};
+
+/* =====================================================================
+   KERN – Oberfläche (gilt für jedes Rätsel)
+   Erwartet eine globale Konstante GAME (vom Rätsel-Modul definiert).
+   Kümmert sich um: Auswahl Grösse/Niveau, Zeit, Statistik, Prüfen, Tipp,
+   Neu beginnen, Lösung zeigen, Drucken, Gewonnen-Dialog, Tastatur,
+   Einbettung in die Plattform (?embed=1).
+   ===================================================================== */
+const $=id=>document.getElementById(id);
+const def=GAME;
+const EMBED=/[?&]embed=1/.test(location.search)||window.name==='raetsel-embed';
+const STORE_KEY='raetsel-trainer-v1-'+def.id;
+const settings={size:def.size,lvl:def.lvl};
+let solUsed=false,puz=null,noteMode=false,tips=0,checks=0,startT=0,timerId=null,genToken=0;
+
+function loadStore(){
+  try{
+    const o=JSON.parse(localStorage.getItem(STORE_KEY)||'{}');
+    if(def.sizes.includes(o.size))settings.size=o.size;
+    if(def.levels[o.lvl])settings.lvl=o.lvl;
+  }catch(e){}
+}
+function saveStore(){try{localStorage.setItem(STORE_KEY,JSON.stringify(settings));}catch(e){}}
+
+/* Meldungen, Zeit, Statistik */
+function showMsg(t,type){const m=$('msg');m.textContent=t;m.className='msg show '+type;}
+function hideMsg(){$('msg').className='msg';}
+function elapsed(){return Math.floor((Date.now()-startT)/1000);}
+function fmt(s){return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');}
+function startTimer(){stopTimer();startT=Date.now();$('stTime').textContent='00:00';timerId=setInterval(()=>$('stTime').textContent=fmt(elapsed()),1000);}
+function stopTimer(){if(timerId)clearInterval(timerId);timerId=null;}
+/* Deutlich sichtbare Kennzeichnung: Wurde die Lösung angezeigt, bleibt das für dieses Rätsel sichtbar
+   (auch nach «Neu beginnen» und nach dem Lösen) – ein Screenshot kann also nicht als eigene Lösung gelten. */
+function updateStatus(){
+  const st=$('stStatus'),won=puz&&puz.done&&!solUsed&&puz.solved();
+  st.className=solUsed?'bad':won?'good':'';
+  st.textContent=solUsed?'⚠ Lösung angezeigt':won?'✔ selbst gelöst':'in Arbeit';
+  $('solBanner').style.display=solUsed?'block':'none';
+  $('stage').classList.toggle('sol',solUsed);
+}
+function updateStats(){$('stTips').textContent=tips;$('stChecks').textContent=checks;}
+
+const ctx={
+  autoCheck:()=>$('autoCheck').checked,
+  noteMode:()=>noteMode,
+  hideMsg,
+  changed:()=>{if(puz&&!puz.done&&puz.solved())win();},
+  msg:showMsg
+};
+/* Beschriftungen – Rätsel dürfen sie überschreiben (def.sizeLabel, def.tag, def.newLabel …) */
+const sizeLabel=v=>def.sizeLabel?def.sizeLabel(v):`${v} × ${v}`;
+const tagOf=(s,l)=>def.tag?def.tag(s,l):`${LEVEL_NAMES[l]} (${s}×${s})`;
+
+/* Auswahl-Leisten */
+function makeSeg(el,items,current,onPick){
+  el.innerHTML='';
+  for(const it of items){
+    const b=document.createElement('button');
+    b.textContent=it.label;b.dataset.v=it.v;
+    b.classList.toggle('on',String(it.v)===String(current));
+    b.addEventListener('click',()=>onPick(it.v));
+    el.appendChild(b);
+  }
+}
+function buildOptions(){
+  makeSeg($('sizeSeg'),def.sizes.map(n=>({v:n,label:sizeLabel(n)})),settings.size,v=>{settings.size=v;buildOptions();saveStore();updateSetupSel();});
+  makeSeg($('lvlSeg'),Object.keys(def.levels).map(k=>({v:k,label:LEVEL_NAMES[k]})),settings.lvl,v=>{settings.lvl=v;buildOptions();saveStore();updateSetupSel();});
+  const d=def.levels[settings.lvl].desc;
+  $('lvlDesc').textContent=typeof d==='function'?d(settings.size):d;
+  $('sizeSeg').style.display=def.sizes.length>1?'':'none';
+  $('sizeLbl').style.display=def.sizes.length>1?'':'none';
+}
+
+
+/* Schritt 1: Rahmenbedingungen wählen – Schritt 2: Rätsel erstellen */
+const TOOL_IDS=['btnCheck','btnNotes','btnHint','btnReset','btnSolve','btnPrint','btnSubmit'];
+function toolsDisabled(on){for(const id of TOOL_IDS){const e=$(id);if(e)e.disabled=on;}if($('autoCheck'))$('autoCheck').disabled=on;}
+function showSetup(){
+  ++genToken;stopTimer();puz=null;tips=0;checks=0;solUsed=false;
+  const stage=$('stage');stage.classList.remove('loading','sol');
+  stage.innerHTML=`<div class="setup-ph"><div class="big">${def.icon||'🧩'}</div><h3>Neues ${def.name} einrichten</h3><p>Wähle Grösse und Niveau und erstelle dann das Rätsel.</p><p class="chosen" id="setupSel"></p><button class="btn primary" id="btnSetupGo">Rätsel erstellen</button></div>`;
+  $('btnSetupGo').addEventListener('click',startGame);
+  const pad=$('pad');pad.innerHTML='';pad.removeAttribute('style');
+  toolsDisabled(true);hideMsg();
+  $('stLevel').textContent='–';$('stTime').textContent='00:00';$('stStatus').textContent='noch kein Rätsel';$('stStatus').className='';
+  if($('stTips'))$('stTips').textContent='–';
+  if($('solBanner'))$('solBanner').style.display='none';
+  updateSetupSel();
+}
+function updateSetupSel(){const e=$('setupSel');if(e)e.textContent=(def.sizes.length>1?sizeLabel(settings.size)+' · ':'')+LEVEL_NAMES[settings.lvl];}
+function startGame(){
+  if(puz&&!puz.done&&!puz.locked&&!solUsed&&!confirm('Das laufende Rätsel wird verworfen. Wirklich ein neues Rätsel erstellen?'))return;
+  newGame();
+}
+
+/* Neues Rätsel */
+function newGame(){
+  const token=++genToken, stage=$('stage');
+  stopTimer();
+  stage.classList.add('loading');
+  showMsg(`${def.name} wird erstellt …`,'info');
+  setTimeout(()=>{
+    if(token!==genToken)return;
+    let p=null;
+    try{p=def.create(settings.size,settings.lvl);}catch(err){console.error(err);}
+    stage.classList.remove('loading');
+    if(!p){showMsg('Das Rätsel konnte nicht erstellt werden. Bitte nochmals versuchen.','warn');if(!puz)showSetup();return;}
+    puz=p;tips=0;checks=0;solUsed=false;
+    toolsDisabled(false);
+    puz.mount(ctx,stage,$('pad'));
+    if($('autoCheck').checked)puz.applyAutoCheck(true);
+    $('stLevel').textContent=tagOf(settings.size,settings.lvl);
+    $('phTitle').textContent=`${def.name} · ${tagOf(settings.size,settings.lvl)}`;
+    $('rules').innerHTML=def.rules(settings.size);
+    updateStats();updateStatus();startTimer();hideMsg();
+  },30);
+}
+
+/* Werkzeuge */
+function check(){
+  if(!puz||puz.done)return;
+  if(puz.customCheck){checks++;updateStats();const r=puz.customCheck();showMsg(r.text,r.type);return;}
+  checks++;
+  const {wrong,empty,right}=puz.check();
+  updateStats();
+  if(puz.solved()){win();return;}
+  const [one,many]=def.units;
+  if(wrong===0){
+    showMsg(right===0?`Noch nichts eingetragen. ${def.missing(empty)}`
+      :`Super! ${right===1?'Die eingetragene '+one+' ist':'Alle '+right+' eingetragenen '+many+' sind'} richtig. ${def.missing(empty)}`,'good');
+  } else {
+    showMsg(`${wrong} ${wrong===1?one+' ist':many+' sind'} falsch (rot). ${right} richtig. ${def.missing(empty)} Korrigiere die roten Felder.`,'warn');
+  }
+}
+function hint(){
+  if(!puz||puz.done)return;
+  const t=puz.hint();
+  if(t===null)return;
+  tips++;updateStats();showMsg(t,'info');
+  ctx.changed();
+}
+function resetGame(){
+  if(!puz||!confirm('Alle eigenen Eingaben löschen und neu beginnen?'))return;
+  puz.reset();tips=0;checks=0;startTimer();hideMsg();updateStats();
+}
+function showSolution(){
+  if(!puz)return;
+  if(!confirm(`Wirklich die ganze Lösung anzeigen? Das ${def.name}-Rätsel gilt dann als nicht gelöst.`))return;
+  solUsed=true;puz.reveal();stopTimer();updateStatus();
+  showMsg('Lösung angezeigt: grün = du hattest es richtig, rot = war falsch, gelb = war leer.','info');
+}
+function win(){
+  puz.finish();stopTimer();
+  $('winText').innerHTML=`${def.name} · Niveau: <b>${tagOf(settings.size,settings.lvl)}</b><br>Zeit: <b>${fmt(elapsed())}</b><br>${puz.winInfo?puz.winInfo()+'<br>':''}Tipps: <b>${tips}</b> · Prüfungen: <b>${checks}</b>`;
+  if(solUsed){$('winTitle').textContent='⚠ Gelöst – aber mit Lösung';$('winText').innerHTML+='<br><b style="color:var(--bad)">Die Lösung wurde angezeigt – das zählt nicht als selbst gelöst.</b>';}
+  else $('winTitle').textContent='🎉 Geschafft!';
+  updateStatus();
+  $('overlay').classList.add('show');
+  showMsg(solUsed?'Gelöst – aber die Lösung wurde vorher angezeigt.':`Gelöst in ${fmt(elapsed())} mit ${tips} Tipps.`,solUsed?'warn':'good');
+}
+function toggleNotes(){
+  if(def.tools.undo){if(puz)puz.undo();return;}
+  if(!def.tools.notes)return;
+  noteMode=!noteMode;
+  $('btnNotes').textContent=(def.tools.notesLabel||'✎ Notizen')+': '+(noteMode?'ein':'aus');
+  $('btnNotes').classList.toggle('on',noteMode);
+}
+
+/* Ereignisse */
+$('btnNew').addEventListener('click',startGame);
+$('btnCheck').addEventListener('click',check);
+$('btnHint').addEventListener('click',hint);
+$('btnReset').addEventListener('click',resetGame);
+$('btnSolve').addEventListener('click',showSolution);
+$('btnPrint').addEventListener('click',()=>{if(puz){puz.clearSelection();}window.print();});
+$('btnNotes').addEventListener('click',toggleNotes);
+$('btnWinNew').addEventListener('click',()=>{$('overlay').classList.remove('show');showSetup();});
+$('btnWinClose').addEventListener('click',()=>$('overlay').classList.remove('show'));
+$('autoCheck').addEventListener('change',()=>{if(puz)puz.applyAutoCheck($('autoCheck').checked);});
+
+document.addEventListener('keydown',e=>{
+  if($('overlay').classList.contains('show')||!puz)return;
+  if(e.ctrlKey||e.metaKey||e.altKey)return;
+  const t=e.target;
+  if(e.key===' '&&t&&t.closest&&t.closest('button,input,summary,select,textarea'))return;   // Leertaste bedient dann das Bedienelement
+  if((e.key==='n'||e.key==='N')&&def.tools.notes&&!def.tools.undo){toggleNotes();return;}
+  if((e.key==='z'||e.key==='Z'||e.key==='Backspace')&&def.tools.undo&&puz.undo){puz.undo();e.preventDefault();return;}
+  if(puz.keydown(e))e.preventDefault();
+});
+
+/* Einbettung: Höhe an die Plattform melden */
+function setupEmbed(){
+  document.body.classList.add('embed');
+  if(window.parent===window)return;
+  const send=()=>window.parent.postMessage({type:'raetsel-height',id:def.id,h:Math.ceil(document.body.getBoundingClientRect().height)},'*');
+  if(window.ResizeObserver)new ResizeObserver(send).observe(document.body);
+  window.addEventListener('load',send);
+  send();
+}
+
+/* Start */
+(function init(){
+  loadStore();
+  $('gameTitle').textContent=def.title;
+  $('sub').textContent=def.intro;
+  $('newTitle').textContent=def.newLabel||'Neues '+def.name;
+  $('btnNew').textContent=def.newLabel?def.newLabel+' starten':'Neues '+def.name+' erstellen';
+  $('sizeLbl').textContent=def.sizeTitle||'Grösse';
+  if(def.tools.undo)$('btnNotes').textContent='↶ Zug zurück';
+  else if(def.tools.notesLabel)$('btnNotes').textContent=def.tools.notesLabel+': aus';
+  if(def.tools.auto===false)$('autoCheck').parentElement.style.display='none';
+  if(def.tools.legend===false)document.querySelector('.legend').style.display='none';
+  $('rulesTitle').textContent='So geht '+def.name;
+  $('btnNotes').style.display=(def.tools.notes||def.tools.undo)?'':'none';
+  $('btnHint').classList.toggle('full',!(def.tools.notes||def.tools.undo));
+  document.title=def.title+' – Rätsel-Trainer';
+  if(EMBED)setupEmbed();
+  buildOptions();
+  showSetup();
+})();
+
+</script>
+</body>
+</html>
